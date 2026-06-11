@@ -1,0 +1,45 @@
+name: Poll PTO Calendar
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # every 15 minutes
+  workflow_dispatch:           # allow manual runs from the Actions tab
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore delta token cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .delta_tokens.json
+          # restore-keys matches the most recently saved cache with this prefix
+          key: delta-tokens-${{ github.run_id }}
+          restore-keys: |
+            delta-tokens-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Poll for new PTO events
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          OUTLOOK_USER_EMAIL: ${{ secrets.OUTLOOK_USER_EMAIL }}
+          MONDAY_API_KEY: ${{ secrets.MONDAY_API_KEY }}
+          MONDAY_BOARD_ID: ${{ secrets.MONDAY_BOARD_ID }}
+        run: python main.py poll
+
+      - name: Save delta token cache
+        uses: actions/cache/save@v4
+        if: always()   # save even if the poll step fails so state isn't lost
+        with:
+          path: .delta_tokens.json
+          key: delta-tokens-${{ github.run_id }}
