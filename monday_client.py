@@ -43,23 +43,30 @@ class MondayClient:
     # PTO item lookup
     # ------------------------------------------------------------------
 
-    def find_pto_item_for_month(self, month_name: str) -> int | None:
+    def find_month_item(self, month_name: str, project_name: str) -> int | None:
         """
-        Return the item ID for the '02 - PTO' row whose name matches month_name
-        (e.g. 'June 2026'). Returns None if not found.
+        Return the item ID for the month row (e.g. 'June 2026') within the
+        given project group ('02 - PTO' or '06 - Flex Friday').
+        Returns None if not found.
         """
         query = """
-        query ($board_id: ID!) {
+        query ($board_id: ID!, $columns: [ItemsPageByColumnValuesQuery!]) {
           items_page_by_column_values(
             limit: 500
             board_id: $board_id
-            columns: [{ column_id: "text_mm0gsedz", column_values: ["02 - PTO"] }]
+            columns: $columns
           ) {
             items { id name }
           }
         }
         """
-        data = self._gql(query, {"board_id": str(self.board_id)})
+        data = self._gql(
+            query,
+            {
+                "board_id": str(self.board_id),
+                "columns": [{"column_id": COL_PROJECT_NAME, "column_values": [project_name]}],
+            },
+        )
         for item in data["items_page_by_column_values"]["items"]:
             if item["name"] == month_name:
                 return int(item["id"])

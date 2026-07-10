@@ -22,15 +22,16 @@ Create one item per script using these columns:
 
 ## This Project
 
-**What it does:** Checks the Outlook Travel calendar for new events containing "PTO" or "Flex Friday" in the title. Extracts the employee name, calculates business hours (1 day = 8 hrs, weekdays only, partial days honored), and creates/updates a subitem on the 👥Resourcing Board under the matching "02 - PTO" month row.
+**What it does:** Checks the Outlook Travel calendar for new events containing "PTO" or "Flex Friday" in the title. Extracts the employee name, calculates business hours (1 day = 8 hrs, weekdays only; half days = 4 hrs), and creates/updates a subitem on the 👥Resourcing Board under the matching month row — **PTO goes under "02 - PTO", Flex Friday goes under "06 - Flex Friday"**.
 
 **PRIMARY IMPLEMENTATION — Claude daily routine (not the code in this repo):**
 The live automation is a Claude scheduled routine that uses the **Microsoft 365 connector** (Outlook calendar search) and the **monday.com connector** directly. If you are the daily routine, follow these rules:
 1. Search the Travel calendar for events from the **last 7 days** (created or modified) whose title contains "PTO" or "Flex Friday" (case-insensitive).
 2. If the Microsoft 365 connector is **not authenticated**, send a push notification telling Matt to re-authenticate it in claude.ai → Settings → Connectors (his org forces re-auth every 24 hours), then stop. Do not fail silently.
-3. For each matching event: person = title minus the keyword; hours = weekdays × 8 (or actual duration for partial days); month row = item named `{Month} YYYY` with Project Name = "02 - PTO" on board `18397329110`.
-4. **Upsert, don't duplicate:** if a subitem for that person already exists under the month row, update its hours/date/notes instead of creating a new one.
-5. Finish with a short notification summarizing what changed (or that nothing was found / it was blocked).
+3. For each matching event: person = title minus the keyword; hours = weekdays × 8. **If the title notes a half day ("half day", "1/2 day", "½ day", etc.), use 4 hours per day instead.**
+4. Month row = item named `{Month} YYYY` on board `18397329110` whose Project Name column is **"02 - PTO" for PTO events** or **"06 - Flex Friday" for Flex Friday events**.
+5. **Upsert, don't duplicate:** if a subitem for that person already exists under the month row, update its hours/date/notes instead of creating a new one.
+6. Finish with a short notification summarizing what changed (or that nothing was found / it was blocked).
 
 **Board:** 👥Resourcing Board — ID `18397329110`
 - "02 - PTO" parent items are named `{Month} YYYY` (e.g. "June 2026")

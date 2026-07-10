@@ -39,7 +39,7 @@ class PTOProcessor:
 
         person = _extract_person(subject)
         start_date, end_date = _parse_dates(event)
-        total_hours = _business_hours(start_date, end_date, event)
+        total_hours = _business_hours(start_date, end_date, event, subject)
 
         if total_hours <= 0:
             print(f"  Skipping '{subject}': calculated 0 hours.")
@@ -53,11 +53,14 @@ class PTOProcessor:
         notes = f"{label}: {date_label}"
         print(f"  {label} detected → {person} | {total_hours}h | {date_label}")
 
+        # PTO goes under "02 - PTO", Flex Friday under "06 - Flex Friday"
+        project_group = "06 - Flex Friday" if label == "Flex Friday" else "02 - PTO"
+
         # PTO may span multiple months – create one subitem per month
         for month_name, hours, month_start in _split_by_month(start_date, end_date, total_hours, event):
-            item_id = self.monday.find_pto_item_for_month(month_name)
+            item_id = self.monday.find_month_item(month_name, project_group)
             if item_id is None:
-                print(f"  WARNING: No '02 - PTO' row found for {month_name} on the Resourcing Board.")
+                print(f"  WARNING: No '{project_group}' row found for {month_name} on the Resourcing Board.")
                 continue
             sub_id = self.monday.upsert_pto_subitem(
                 parent_item_id=item_id,
@@ -85,9 +88,10 @@ def _match_type(subject: str) -> str | None:
 
 
 def _extract_person(subject: str) -> str:
-    # Strip the keyword and common separators, leaving the name
+    # Strip the keyword, half-day markers, and separators, leaving the name
     name = _KEYWORD_RE.sub('', subject)
-    name = re.sub(r'^[\s\-–—:,]+|[\s\-–—:,]+$', '', name)
+    name = _HALF_DAY_RE.sub('', name)
+    name = re.sub(r'^[\s\-–—:,()]+|[\s\-–—:,()]+$', '', name)
     return name.strip() or subject.strip()
 
 
@@ -108,16 +112,25 @@ def _parse_dates(event: dict) -> tuple[date, date]:
     return start, end
 
 
-def _business_hours(start: date, end: date, event: dict) -> float:
+_HALF_DAY_RE = re.compile(r'\bhalf[\s-]*day\b|\b1/2\s*day\b|½\s*day|\bhalf\b|\b1/2\b|½', re.IGNORECASE)
+
+
+def _is_half_day(subject: str) -> bool:
+    return bool(_HALF_DAY_RE.search(subject))
+
+
+def _business_hours(start: date, end: date, event: dict, subject: str = "") -> float:
     is_all_day = "date" in event.get("start", {})
+    hours_per_day = 4.0 if _is_half_day(subject) else 8.0
 
     if is_all_day:
-        return _count_weekdays(start, end) * 8.0
+        return _count_weekdays(start, end) * hours_per_day
 
-    # Timed event: use actual duration in hours
+    # Timed event: use actual duration in hours (capped at hours_per_day per day)
     dt_start = datetime.fromisoformat(event["start"]["dateTime"].rstrip("Z"))
     dt_end = datetime.fromisoformat(event["end"]["dateTime"].rstrip("Z"))
-    return round((dt_end - dt_start).total_seconds() / 3600, 2)
+    duration = round((dt_end - dt_start).total_seconds() / 3600, 2)
+    return min(duration, _count_weekdays(start, end) * hours_per_day) if duration > 0 else duration
 
 
 def _count_weekdays(start: date, end: date) -> int:
