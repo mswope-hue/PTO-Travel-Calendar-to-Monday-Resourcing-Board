@@ -22,18 +22,22 @@ Create one item per script using these columns:
 
 ## This Project
 
-**What it does:** Polls the Outlook Travel calendar via Microsoft Graph API for new events containing "PTO" or "Flex Friday". Extracts the employee name, calculates business hours (1 day = 8 hrs), and creates/updates a subitem on the 👥Resourcing Board under the matching "02 - PTO" month row.
+**What it does:** Checks the Outlook Travel calendar for new events containing "PTO" or "Flex Friday" in the title. Extracts the employee name, calculates business hours (1 day = 8 hrs, weekdays only, partial days honored), and creates/updates a subitem on the 👥Resourcing Board under the matching "02 - PTO" month row.
+
+**PRIMARY IMPLEMENTATION — Claude daily routine (not the code in this repo):**
+The live automation is a Claude scheduled routine that uses the **Microsoft 365 connector** (Outlook calendar search) and the **monday.com connector** directly. If you are the daily routine, follow these rules:
+1. Search the Travel calendar for events from the **last 7 days** (created or modified) whose title contains "PTO" or "Flex Friday" (case-insensitive).
+2. If the Microsoft 365 connector is **not authenticated**, send a push notification telling Matt to re-authenticate it in claude.ai → Settings → Connectors (his org forces re-auth every 24 hours), then stop. Do not fail silently.
+3. For each matching event: person = title minus the keyword; hours = weekdays × 8 (or actual duration for partial days); month row = item named `{Month} YYYY` with Project Name = "02 - PTO" on board `18397329110`.
+4. **Upsert, don't duplicate:** if a subitem for that person already exists under the month row, update its hours/date/notes instead of creating a new one.
+5. Finish with a short notification summarizing what changed (or that nothing was found / it was blocked).
 
 **Board:** 👥Resourcing Board — ID `18397329110`
 - "02 - PTO" parent items are named `{Month} YYYY` (e.g. "June 2026")
 - PTO subitems board ID: `18397329129`
 - Subitem columns: `numeric_mkzkw9qz` (planned hrs), `date_mm33e7b7` (start date), `text_mm35wh5a` (notes)
 
-**Schedule:** Daily at ~6:23am Central via GitHub Actions (`.github/workflows/poll-pto.yml`)
-
-**Required secrets (GitHub repo secrets):**
-- `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`
-- `OUTLOOK_USER_EMAIL`
-- `MONDAY_API_KEY`, `MONDAY_BOARD_ID`
+**BACKUP IMPLEMENTATION — this repo's Python code (currently disabled):**
+GitHub Actions workflow (`.github/workflows/poll-pto.yml`, daily ~6:23am Central) running `python main.py poll` via Microsoft Graph. Blocked on Azure app registration (IT won't grant it). Required secrets if ever revived: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `OUTLOOK_USER_EMAIL`, `MONDAY_API_KEY`, `MONDAY_BOARD_ID`.
 
 **Registry entry:** https://gettys-group.monday.com/boards/18408548437/pulses/12255877627
