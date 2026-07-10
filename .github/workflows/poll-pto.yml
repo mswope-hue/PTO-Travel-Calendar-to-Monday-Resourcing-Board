@@ -2,7 +2,7 @@ name: Poll PTO Calendar
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # every 15 minutes
+    - cron: '23 11 * * *'    # daily at 11:23 UTC (~6:23am Central)
   workflow_dispatch:           # allow manual runs from the Actions tab
 
 jobs:

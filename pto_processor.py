@@ -32,8 +32,9 @@ class PTOProcessor:
 
     def _handle_event(self, event: dict) -> None:
         subject = event.get("subject", "")
-        if not _is_pto(subject):
-            print(f"  Skipping (not PTO): '{subject}'")
+        label = _match_type(subject)
+        if label is None:
+            print(f"  Skipping (not PTO / Flex Friday): '{subject}'")
             return
 
         person = _extract_person(subject)
@@ -49,8 +50,8 @@ class PTOProcessor:
             if start_date == end_date
             else f"{start_date.isoformat()} – {end_date.isoformat()}"
         )
-        notes = f"PTO: {date_label}"
-        print(f"  PTO detected → {person} | {total_hours}h | {date_label}")
+        notes = f"{label}: {date_label}"
+        print(f"  {label} detected → {person} | {total_hours}h | {date_label}")
 
         # PTO may span multiple months – create one subitem per month
         for month_name, hours, month_start in _split_by_month(start_date, end_date, total_hours, event):
@@ -72,14 +73,20 @@ class PTOProcessor:
 # Pure helpers (no I/O)
 # ------------------------------------------------------------------
 
-def _is_pto(subject: str) -> bool:
-    # Must contain the word "PTO" (case-insensitive, whole-word match)
-    return bool(re.search(r'\bPTO\b', subject, re.IGNORECASE))
+_KEYWORD_RE = re.compile(r'\bflex\s*friday\b|\bPTO\b', re.IGNORECASE)
+
+
+def _match_type(subject: str) -> str | None:
+    """Return 'PTO' or 'Flex Friday' if the subject matches, else None."""
+    m = _KEYWORD_RE.search(subject)
+    if not m:
+        return None
+    return "PTO" if m.group(0).upper() == "PTO" else "Flex Friday"
 
 
 def _extract_person(subject: str) -> str:
-    # Strip "PTO" and common separators, leaving the name
-    name = re.sub(r'\bPTO\b', '', subject, flags=re.IGNORECASE)
+    # Strip the keyword and common separators, leaving the name
+    name = _KEYWORD_RE.sub('', subject)
     name = re.sub(r'^[\s\-–—:,]+|[\s\-–—:,]+$', '', name)
     return name.strip() or subject.strip()
 

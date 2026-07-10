@@ -22,14 +22,14 @@ Create one item per script using these columns:
 
 ## This Project
 
-**What it does:** Polls the Outlook Travel calendar via Microsoft Graph API for new events containing "PTO". Extracts the employee name, calculates business hours (1 day = 8 hrs), and creates/updates a subitem on the 👥Resourcing Board under the matching "02 - PTO" month row.
+**What it does:** Polls the Outlook Travel calendar via Microsoft Graph API for new events containing "PTO" or "Flex Friday". Extracts the employee name, calculates business hours (1 day = 8 hrs), and creates/updates a subitem on the 👥Resourcing Board under the matching "02 - PTO" month row.
 
 **Board:** 👥Resourcing Board — ID `18397329110`
 - "02 - PTO" parent items are named `{Month} YYYY` (e.g. "June 2026")
 - PTO subitems board ID: `18397329129`
 - Subitem columns: `numeric_mkzkw9qz` (planned hrs), `date_mm33e7b7` (start date), `text_mm35wh5a` (notes)
 
-**Schedule:** Every 15 minutes via GitHub Actions (`.github/workflows/poll-pto.yml`)
+**Schedule:** Daily at ~6:23am Central via GitHub Actions (`.github/workflows/poll-pto.yml`)
 
 **Required secrets (GitHub repo secrets):**
 - `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`
